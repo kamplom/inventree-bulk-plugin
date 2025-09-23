@@ -10,7 +10,7 @@ from plugin.base.ui.mixins import UIFeature
 from plugin.mixins import UserInterfaceMixin, UrlsMixin, AppMixin, SettingsMixin
 
 from .api import api_urls
-from .version import BULK_PLUGIN_VERSION
+from . import PLUGIN_VERSION
 
 
 @dataclass
@@ -29,10 +29,12 @@ def validate_json(value):
         raise ValidationError(str(e))
 
 
-class InvenTreeBulkPlugin(AppMixin, UserInterfaceMixin, UrlsMixin, SettingsMixin, InvenTreePlugin):
+class InvenTreeBulkPlugin(
+    AppMixin, UserInterfaceMixin, UrlsMixin, SettingsMixin, InvenTreePlugin
+):
     AUTHOR = "wolflu05"
     DESCRIPTION = "InvenTree Bulk plugin"
-    VERSION = BULK_PLUGIN_VERSION
+    VERSION = PLUGIN_VERSION
 
     # 0.9.1 - due to "invoke update" doesn't run collectstatic (see inventree/InvenTree#4077)
     # 0.12.6 - Settings do not work in combination with api views (see inventree/InvenTree#5408)
@@ -50,7 +52,7 @@ class InvenTreeBulkPlugin(AppMixin, UserInterfaceMixin, UrlsMixin, SettingsMixin
             "name": "Default download headers",
             "description": "Set default download headers that should be used each time in json format",
             "default": "{}",
-            "validator": validate_json
+            "validator": validate_json,
         }
     }
 
@@ -60,40 +62,46 @@ class InvenTreeBulkPlugin(AppMixin, UserInterfaceMixin, UrlsMixin, SettingsMixin
             model="stocklocation",
             icon="ti:tools:outline",
             args={"objectType": "STOCK_LOCATION"},
-            key="bulk-creation-location"
+            key="bulk-creation-location",
         ),
         Panel(
             "Category bulk creation",
             model="partcategory",
             icon="ti:tools:outline",
             args={"objectType": "PART_CATEGORY"},
-            key="bulk-creation-category"
+            key="bulk-creation-category",
         ),
         Panel(
             "Part bulk creation",
             model="partcategory",
             icon="ti:tools:outline",
             args={"objectType": "PART"},
-            key="bulk-creation-part"
+            key="bulk-creation-part",
         ),
     ]
 
-    def get_ui_panels(self, request: Request, context: dict, **kwargs) -> list[UIFeature]:
+    def get_ui_panels(
+        self, request: Request, context: dict, **kwargs
+    ) -> list[UIFeature]:
         panels = []
 
-        target_model = context.get('target_model', None)
-        target_id = context.get('target_id', None)
+        target_model = context.get("target_model", None)
+        target_id = context.get("target_id", None)
 
         for panel in self.PREACT_PANELS:
             if target_model == panel.model and target_id is not None:
                 panels.append({
-                    'key': panel.key,
-                    'title': panel.title,
-                    'source': self.plugin_static_file('bulk-creation-panel.dev.js:renderPanel' if os.environ.get('INVENTREE_REPORT_LSP_DEV', False) else 'dist/bulk-creation-panel.js:renderPanel'),
-                    'icon': panel.icon,
-                    'context': {
-                        'args': panel.args,
-                    }
+                    "key": panel.key,
+                    "title": panel.title,
+                    "source": self.plugin_static_file(
+                        "bulk-creation-panel.dev.js:renderPanel"
+                        if os.environ.get("INVENTREE_BULK_DEV", False)
+                        else "dist/bulk-creation-panel.js:renderPanel"
+                    ),
+                    "icon": panel.icon,
+                    "context": {
+                        "args": panel.args,
+                    },
                 })
 
         return panels

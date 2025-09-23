@@ -6,8 +6,8 @@ from django.core.exceptions import ValidationError
 from plugin import registry
 
 from ...models import validate_template
-from ...InvenTreeBulkPlugin import InvenTreeBulkPlugin, validate_json
-from ...version import BULK_PLUGIN_VERSION
+from ...core import InvenTreeBulkPlugin, validate_json
+from ... import PLUGIN_VERSION
 
 
 class InvenTreeBulkPluginModelTestCase(TestCase):
@@ -18,7 +18,7 @@ class InvenTreeBulkPluginModelTestCase(TestCase):
         with self.assertRaisesRegex(ValidationError, "template is no valid json format"):
             validate_template("no json structure")
 
-        with self.assertRaisesRegex(ValueError, f"The server runs on v{BULK_PLUGIN_VERSION} which is incompatible to v999.9.9."):
+        with self.assertRaisesRegex(ValueError, f"The server runs on v{PLUGIN_VERSION} which is incompatible to v999.9.9."):
             schema = json.dumps({
                 "version": "999.9.9",
                 "input": {},
