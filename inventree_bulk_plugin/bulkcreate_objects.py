@@ -202,7 +202,12 @@ class BulkCreateObject(Generic[ModelType]):
                     v = get_model_instance(model, v, limit_choices)
                 properties[k] = v
 
-        return self.model.objects.create(**{**kwargs, **properties})
+        # Create instance and validate (which calls validate_unique())
+        all_properties = {**kwargs, **properties}
+        instance = self.model(**all_properties)
+        instance.full_clean()  # This will call validate_unique()
+        instance.save()
+        return instance
 
     def create_objects(self, objects: ParseChildReturnType) -> list[ModelType]:
         if self.generate_type == "tree":
