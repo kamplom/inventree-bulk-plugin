@@ -8,11 +8,11 @@ requires = ["setuptools", "twine", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "inventree-bulk-plugin"
+name = "kamplom-bulk"
 description = "Bulk creation plugin for InvenTree"
 dynamic = ["version"]
 authors = [
-    { name = "wolflu05",email = "76838159+wolflu05@users.noreply.github.com" },
+    { name = "mrmikefieldsbro",email = "76838159+wolflu05@users.noreply.github.com" },
 ]
 readme = "README.md"
 license = "MIT"

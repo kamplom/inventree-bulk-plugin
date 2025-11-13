@@ -2,12 +2,16 @@ import io
 import re
 import requests
 import json
+import logging
 from dataclasses import dataclass
 from typing import Any, Callable, Generic, Literal, Optional, TypeVar, Union
 from pathlib import Path
 from django.db import transaction
 from django.db.models import Model
+from django.core.exceptions import ValidationError
 from django.apps import apps
+
+logger = logging.getLogger(__name__)
 from django.urls import reverse
 from django.core.files import File
 from django.core.files.base import ContentFile
@@ -202,11 +206,61 @@ class BulkCreateObject(Generic[ModelType]):
                     v = get_model_instance(model, v, limit_choices)
                 properties[k] = v
 
-        # Create instance and validate (which calls validate_unique())
+        # Create instance and call validate_unique() before saving
         all_properties = {**kwargs, **properties}
         instance = self.model(**all_properties)
-        instance.full_clean()  # This will call validate_unique()
+        
+        # Log instance details before validation
+        name_value = all_properties.get("name", None)
+        parent_value = all_properties.get("parent", None)
+        logger.error(
+            f"validate_unique: Checking duplicate for {self.model.__name__} - "
+            f"name='{name_value}', parent={parent_value}, pk={instance.pk}"
+        )
+        
+        # Check if duplicate exists manually for logging
+        if name_value:
+            try:
+                has_parent_field = hasattr(instance, 'parent')
+                if has_parent_field:
+                    existing_query = self.model.objects.filter(
+                        name=name_value, parent=parent_value
+                    )
+                    existing_count = existing_query.count()
+                    logger.error(
+                        f"validate_unique: Found {existing_count} existing objects with "
+                        f"name='{name_value}' and parent={parent_value}"
+                    )
+                    if existing_count > 0:
+                        existing = existing_query.first()
+                        logger.error(
+                            f"validate_unique: Duplicate exists! ID={existing.pk}, "
+                            f"name='{existing.name}', parent={existing.parent}"
+                        )
+            except Exception as e:
+                logger.error(f"validate_unique: Error checking for duplicates manually: {e}")
+        
+        # Call validate_unique() - this will check for duplicates
+        # For new instances (pk=None), the exclude(pk=None) in validate_unique 
+        # won't exclude anything, which is correct - we want to catch all duplicates
+        try:
+            instance.validate_unique()
+            logger.error(f"validate_unique: Validation passed for name='{name_value}'")
+        except ValidationError as e:
+            logger.error(
+                f"validate_unique: ValidationError raised - {type(e).__name__}: {e}, "
+                f"message_dict: {getattr(e, 'message_dict', None)}, "
+                f"messages: {getattr(e, 'messages', None)}"
+            )
+            raise
+        except Exception as e:
+            logger.error(
+                f"validate_unique: Unexpected error during validation - {type(e).__name__}: {e}"
+            )
+            raise
+        
         instance.save()
+        logger.error(f"validate_unique: Successfully saved {self.model.__name__} with name='{name_value}', pk={instance.pk}")
         return instance
 
     def create_objects(self, objects: ParseChildReturnType) -> list[ModelType]:
